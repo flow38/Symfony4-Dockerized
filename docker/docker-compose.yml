@@ -1,0 +1,54 @@
+version: '2'
+
+services:
+    db:
+        container_name: ${MYSQL_CONTAINER}
+        image: mysql
+        volumes:
+            - "./.data/db:/var/lib/mysql"
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+            MYSQL_USER: ${MYSQL_USER}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    php:
+        container_name: ${PHP_FPM_CONTAINER}
+        build:
+            context: php7-fpm
+            args:
+                TIMEZONE: ${TIMEZONE}
+        volumes:
+            - ${SYMFONY_APP_PATH}:/var/www/symfony
+            - ./logs/symfony:/var/www/symfony/app/logs
+            - ./conf/php/conf.d:/usr/local/etc/php/conf.d
+        environment:
+             XDEBUG_CONFIG: "remote_host=192.168.1.16"
+    nginx:
+        container_name: ${NGINX_CONTAINER}
+        build: nginx
+        ports:
+            - 80:80
+        volumes_from:
+            - php
+        volumes:
+            - ./logs/nginx/:/var/log/nginx
+    elk:
+        container_name: elk
+        image: willdurand/elk
+        ports:
+            - 81:80
+        volumes:
+            - ./elk/logstash:/etc/logstash
+            - ./elk/logstash/patterns:/opt/logstash/patterns
+        volumes_from:
+            - php
+            - nginx
+    phpmyadmin:
+        container_name: phpmyadmin
+        image: phpmyadmin/phpmyadmin
+        ports:
+            - "82:80"
+        environment:
+            MYSQL_USERNAME: ${MYSQL_USER}
+            MYSQL_ROOT_PASSWORD : ${MYSQL_PASSWORD}
+            PMA_HOST : ${MYSQL_CONTAINER}
